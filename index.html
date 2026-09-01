@@ -226,7 +226,9 @@
     .auth-card { width: min(430px,100%); padding: 30px; border-radius: 24px; background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow); }
     .auth-brand { display:flex; align-items:center; gap:14px; margin-bottom:22px; }
     .auth-brand .brand-mark { color:#fff; background:linear-gradient(145deg,var(--blue),var(--purple)); border:0; }
-    .google-button { width:100%; display:inline-flex; justify-content:center; align-items:center; gap:10px; }
+    .auth-form { display:grid; gap:14px; }
+    .auth-form .button { width:100%; }
+    .auth-error { margin:0; color:var(--red); font-size:13px; line-height:1.45; }
     .auth-note { margin:14px 0 0; color:var(--muted); font-size:13px; line-height:1.5; }
     .signed-in-user { display:none; align-items:center; gap:10px; font-size:13px; font-weight:700; color:rgba(255,255,255,.9); }
     .signed-in-user.visible { display:inline-flex; }
@@ -278,9 +280,14 @@
 <body>
   <section id="authGate" class="auth-gate" aria-label="Employee Hub sign in">
     <div class="auth-card">
-      <div class="auth-brand"><div class="brand-mark">EH</div><div><h2>Employee Hub</h2><p class="muted-text">Secure access with Google.</p></div></div>
-      <button id="googleSignInButton" class="button button-primary google-button" type="button">Sign in with Google</button>
-      <p id="authMessage" class="auth-note">Use your authorized Google account to access Employee Hub.</p>
+      <div class="auth-brand"><div class="brand-mark">EH</div><div><h2>Employee Hub</h2><p class="muted-text">Secure access with email and password.</p></div></div>
+      <form id="loginForm" class="auth-form">
+        <label>Email<input id="loginEmail" type="email" autocomplete="username" placeholder="name@company.com" required /></label>
+        <label>Password<input id="loginPassword" type="password" autocomplete="current-password" placeholder="Enter your password" required /></label>
+        <p id="loginError" class="auth-error" hidden></p>
+        <button id="loginButton" class="button button-primary" type="submit">Sign In</button>
+      </form>
+      <p id="authMessage" class="auth-note">Use your authorized Employee Hub email and password.</p>
     </div>
   </section>
   <div class="app-shell">
@@ -426,7 +433,7 @@
   <script type="module">
     /* ============================================================
        FIREBASE SETUP
-       Employee Hub uses Google Authentication and Cloud Firestore.
+       Employee Hub uses Email/Password Authentication and Cloud Firestore.
        ============================================================ */
     const firebaseConfig = {
       apiKey: "AIzaSyB4Xtxd8eWbQxYcm3xS8D52mCjRJDrScCg",
@@ -464,7 +471,7 @@
       nextHolidayName: $("nextHolidayName"), nextHolidayDate: $("nextHolidayDate"), nextHolidayBadge: $("nextHolidayBadge"),
       employeeDialog: $("employeeDialog"), employeeForm: $("employeeForm"), employeeName: $("employeeName"), employeeInitials: $("employeeInitials"), employeeVacation: $("employeeVacation"), employeeSick: $("employeeSick"), saveEmployeeButton: $("saveEmployeeButton"),
       leaveDialog: $("leaveDialog"), leaveForm: $("leaveForm"), leaveDialogTitle: $("leaveDialogTitle"), leaveEmployeeLabel: $("leaveEmployeeLabel"), leaveType: $("leaveType"), leaveStartDate: $("leaveStartDate"), leaveEndDate: $("leaveEndDate"), leaveStatus: $("leaveStatus"), leaveDuration: $("leaveDuration"), leaveNotes: $("leaveNotes"), saveLeaveButton: $("saveLeaveButton"),
-      confirmDialog: $("confirmDialog"), confirmTitle: $("confirmTitle"), confirmMessage: $("confirmMessage"), confirmActionButton: $("confirmActionButton"), toast: $("toast"), modeBadge: $("modeBadge"), modeText: $("modeText"), authGate: $("authGate"), googleSignInButton: $("googleSignInButton"), authMessage: $("authMessage"), signedInUser: $("signedInUser"), signOutButton: $("signOutButton")
+      confirmDialog: $("confirmDialog"), confirmTitle: $("confirmTitle"), confirmMessage: $("confirmMessage"), confirmActionButton: $("confirmActionButton"), toast: $("toast"), modeBadge: $("modeBadge"), modeText: $("modeText"), authGate: $("authGate"), loginForm: $("loginForm"), loginEmail: $("loginEmail"), loginPassword: $("loginPassword"), loginError: $("loginError"), loginButton: $("loginButton"), authMessage: $("authMessage"), signedInUser: $("signedInUser"), signOutButton: $("signOutButton")
     };
 
     const configuredForFirebase = Object.values(firebaseConfig).every(value => value && value !== "REPLACE_ME");
@@ -514,9 +521,7 @@
       const app = appModule.initializeApp(firebaseConfig);
       const db = firestoreModule.getFirestore(app);
       const auth = authModule.getAuth(app);
-      const provider = new authModule.GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: "select_account" });
-      dbApi = { db, auth, provider, ...firestoreModule, ...authModule };
+      dbApi = { db, auth, ...firestoreModule, ...authModule };
     }
 
     async function loadData() {
@@ -739,7 +744,7 @@
       await loadData();
     }
 
-    function setSignedOutState(message = "Use your authorized Google account to access Employee Hub.") {
+    function setSignedOutState(message = "Use your authorized Employee Hub email and password.") {
       state.user = null; state.mode = "offline"; state.employees = []; state.leaves = []; state.selectedEmployeeId = null;
       els.modeBadge.classList.remove("firebase"); els.modeText.textContent = "Sign in required";
       els.openAddEmployee.disabled = true; els.openAddLeave.disabled = true; els.deleteEmployee.disabled = true;
@@ -747,12 +752,28 @@
       els.authMessage.textContent = message; els.authGate.hidden = false; renderAll();
     }
 
-    els.googleSignInButton.addEventListener("click", async () => {
-      els.googleSignInButton.disabled = true; els.googleSignInButton.textContent = "Opening Google...";
-      els.authMessage.textContent = "Choose your authorized Google account.";
-      try { await dbApi.signInWithPopup(dbApi.auth, dbApi.provider); }
-      catch (error) { console.error(error); els.authMessage.textContent = error.code === "auth/popup-closed-by-user" ? "Google sign-in was cancelled." : (error.message || "Google sign-in failed."); }
-      finally { els.googleSignInButton.disabled = false; els.googleSignInButton.textContent = "Sign in with Google"; }
+    els.loginForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const email = els.loginEmail.value.trim();
+      const password = els.loginPassword.value;
+      els.loginError.hidden = true;
+      els.loginButton.disabled = true;
+      els.loginButton.innerHTML = `<span class="spinner"></span>Signing in...`;
+      try {
+        await dbApi.setPersistence(dbApi.auth, dbApi.browserLocalPersistence);
+        await withTimeout(dbApi.signInWithEmailAndPassword(dbApi.auth, email, password));
+        els.loginPassword.value = "";
+      } catch (error) {
+        console.error(error);
+        let message = "Sign-in failed. Check your email and password.";
+        if (error?.code === "auth/too-many-requests") message = "Too many attempts. Please wait and try again.";
+        else if (error?.code === "auth/network-request-failed") message = "Network error. Check your internet connection and try again.";
+        els.loginError.textContent = message;
+        els.loginError.hidden = false;
+      } finally {
+        els.loginButton.disabled = false;
+        els.loginButton.textContent = "Sign In";
+      }
     });
 
     els.signOutButton.addEventListener("click", async () => {
