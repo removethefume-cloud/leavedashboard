@@ -398,6 +398,7 @@
       <div class="modal-header"><div><p class="eyebrow">Team management</p><h2>Add Employee</h2></div><button class="icon-button" type="button" data-close="employeeDialog" aria-label="Close">×</button></div>
       <label>Full name<input id="employeeName" type="text" placeholder="Example: Full Name" required /></label>
       <label>Initials<input id="employeeInitials" type="text" maxlength="3" placeholder="Example: AA" required /></label>
+      <label>Work email<input id="employeeEmail" type="email" placeholder="name@plymovent.com" required /></label>
       <div class="two-column-fields">
         <label>Vacation allowance<input id="employeeVacation" type="number" min="0" step="0.5" value="10" required /></label>
         <label>Sick allowance<input id="employeeSick" type="number" min="0" step="0.5" value="5" required /></label>
@@ -459,6 +460,7 @@
     ];
 
 
+    const ADMIN_EMAILS = new Set(["varun.phull@plymovent.com"]);
     const state = { employees: [], leaves: [], selectedEmployeeId: null, activeFilter: null, editingLeaveId: null, confirmHandler: null, mode: "offline", user: null };
     const $ = (id) => document.getElementById(id);
     const els = {
@@ -469,7 +471,7 @@
       holidayDays: $("holidayDays"), historyCount: $("historyCount"), removeFilter: $("removeFilter"), leaveHistoryBody: $("leaveHistoryBody"), holidayList: $("holidayList"),
       currentHolidayLabel: $("currentHolidayLabel"), currentHolidayName: $("currentHolidayName"), currentHolidayDate: $("currentHolidayDate"), currentHolidayBadge: $("currentHolidayBadge"),
       nextHolidayName: $("nextHolidayName"), nextHolidayDate: $("nextHolidayDate"), nextHolidayBadge: $("nextHolidayBadge"),
-      employeeDialog: $("employeeDialog"), employeeForm: $("employeeForm"), employeeName: $("employeeName"), employeeInitials: $("employeeInitials"), employeeVacation: $("employeeVacation"), employeeSick: $("employeeSick"), saveEmployeeButton: $("saveEmployeeButton"),
+      employeeDialog: $("employeeDialog"), employeeForm: $("employeeForm"), employeeName: $("employeeName"), employeeInitials: $("employeeInitials"), employeeEmail: $("employeeEmail"), employeeVacation: $("employeeVacation"), employeeSick: $("employeeSick"), saveEmployeeButton: $("saveEmployeeButton"),
       leaveDialog: $("leaveDialog"), leaveForm: $("leaveForm"), leaveDialogTitle: $("leaveDialogTitle"), leaveEmployeeLabel: $("leaveEmployeeLabel"), leaveType: $("leaveType"), leaveStartDate: $("leaveStartDate"), leaveEndDate: $("leaveEndDate"), leaveStatus: $("leaveStatus"), leaveDuration: $("leaveDuration"), leaveNotes: $("leaveNotes"), saveLeaveButton: $("saveLeaveButton"),
       confirmDialog: $("confirmDialog"), confirmTitle: $("confirmTitle"), confirmMessage: $("confirmMessage"), confirmActionButton: $("confirmActionButton"), toast: $("toast"), modeBadge: $("modeBadge"), modeText: $("modeText"), authGate: $("authGate"), loginForm: $("loginForm"), loginEmail: $("loginEmail"), loginPassword: $("loginPassword"), loginError: $("loginError"), loginButton: $("loginButton"), authMessage: $("authMessage"), signedInUser: $("signedInUser"), signOutButton: $("signOutButton")
     };
@@ -477,6 +479,8 @@
     const configuredForFirebase = Object.values(firebaseConfig).every(value => value && value !== "REPLACE_ME");
     let dbApi = null;
 
+    function currentUserEmail() { return String(state.user?.email || "").trim().toLowerCase(); }
+    function isAdmin() { return ADMIN_EMAILS.has(currentUserEmail()); }
     function selectedEmployee() { return state.employees.find(e => e.id === state.selectedEmployeeId) || null; }
     function formatDate(value) { return new Intl.DateTimeFormat("en-CA", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`)); }
     function plural(value, word) { return `${value} ${word}${value === 1 ? "" : "s"}`; }
@@ -526,22 +530,49 @@
 
     async function loadData() {
       if (state.mode !== "firebase" || !state.user) throw new Error("Firebase is not authenticated.");
-      const employeeSnapshot = await withTimeout(dbApi.getDocs(dbApi.collection(dbApi.db, "employees")));
-      const leaveSnapshot = await withTimeout(dbApi.getDocs(dbApi.collection(dbApi.db, "leaveEntries")));
-      state.employees = employeeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
-      state.leaves = leaveSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => String(b.startDate).localeCompare(String(a.startDate)));
+
+      if (isAdmin()) {
+        const employeeSnapshot = await withTimeout(dbApi.getDocs(dbApi.collection(dbApi.db, "employees")));
+        const leaveSnapshot = await withTimeout(dbApi.getDocs(dbApi.collection(dbApi.db, "leaveEntries")));
+        state.employees = employeeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
+        state.leaves = leaveSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => String(b.startDate).localeCompare(String(a.startDate)));
+      } else {
+        const email = currentUserEmail();
+        const employeeQuery = dbApi.query(
+          dbApi.collection(dbApi.db, "employees"),
+          dbApi.where("email", "==", email)
+        );
+        const employeeSnapshot = await withTimeout(dbApi.getDocs(employeeQuery));
+        state.employees = employeeSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        if (!state.employees.length) {
+          state.leaves = [];
+          state.selectedEmployeeId = null;
+          renderAll();
+          throw new Error(`No Employee Hub profile is linked to ${email}. Ask the administrator to add this email to the employee profile.`);
+        }
+
+        const ownEmployeeId = state.employees[0].id;
+        const leaveQuery = dbApi.query(
+          dbApi.collection(dbApi.db, "leaveEntries"),
+          dbApi.where("employeeId", "==", ownEmployeeId)
+        );
+        const leaveSnapshot = await withTimeout(dbApi.getDocs(leaveQuery));
+        state.leaves = leaveSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a,b) => String(b.startDate).localeCompare(String(a.startDate)));
+      }
+
       if (!state.selectedEmployeeId || !state.employees.some(e => e.id === state.selectedEmployeeId)) state.selectedEmployeeId = state.employees[0]?.id || null;
       renderAll();
     }
 
     async function addEmployee(record) {
-      if (state.mode !== "firebase" || !state.user) throw new Error("Firebase is unavailable. Employee was not saved.");
+      if (state.mode !== "firebase" || !state.user || !isAdmin()) throw new Error("Only the administrator can add employees.");
       const ref = await withTimeout(dbApi.addDoc(dbApi.collection(dbApi.db, "employees"), record));
       state.employees.push({ id: ref.id, ...record });
     }
 
     async function removeEmployee(employeeId) {
-      if (state.mode !== "firebase" || !state.user) throw new Error("Firebase is unavailable. Employee was not deleted.");
+      if (state.mode !== "firebase" || !state.user || !isAdmin()) throw new Error("Only the administrator can delete employees.");
       const employeeLeaves = state.leaves.filter(l => l.employeeId === employeeId);
       await withTimeout(Promise.all([
         dbApi.deleteDoc(dbApi.doc(dbApi.db, "employees", employeeId)),
@@ -581,18 +612,23 @@
         button.addEventListener("click", () => { state.selectedEmployeeId = employee.id; state.activeFilter = null; renderAll(); });
         els.employeeButtons.appendChild(button);
       });
-      const add = document.createElement("button");
-      add.type = "button"; add.className = "employee-profile add-profile"; add.title = "Add employee";
-      add.innerHTML = `<span class="avatar">+</span><small>Add</small>`;
-      add.addEventListener("click", openEmployeeDialog);
-      els.employeeButtons.appendChild(add);
+      if (isAdmin()) {
+        const add = document.createElement("button");
+        add.type = "button"; add.className = "employee-profile add-profile"; add.title = "Add employee";
+        add.innerHTML = `<span class="avatar">+</span><small>Add</small>`;
+        add.addEventListener("click", openEmployeeDialog);
+        els.employeeButtons.appendChild(add);
+      }
       els.employeeCount.textContent = plural(state.employees.length, "employee");
     }
     function renderSelectedEmployee() {
       const employee = selectedEmployee();
       els.selectedEmployeeName.textContent = employee?.name || "No employee selected";
       els.selectedEmployeeRole.textContent = employee ? `${employee.initials} profile · ${employee.vacationAllowance} vacation days · ${employee.sickAllowance} sick days` : "Choose a profile above to view leave details.";
-      const locked = state.mode !== "firebase" || !state.user; els.deleteEmployee.disabled = !employee || locked; els.openAddLeave.disabled = !employee || locked;
+      const locked = state.mode !== "firebase" || !state.user;
+      els.deleteEmployee.hidden = !isAdmin();
+      els.deleteEmployee.disabled = !employee || locked || !isAdmin();
+      els.openAddLeave.disabled = !employee || locked;
     }
     function approvedUsed(type) { return state.leaves.filter(l => l.employeeId === state.selectedEmployeeId && l.type === type && l.status === "Approved").reduce((sum,l) => sum + Number(l.days || 0), 0); }
     function renderKpis() {
@@ -687,11 +723,11 @@
 
     els.employeeForm.addEventListener("submit", async event => {
       event.preventDefault();
-      const name = els.employeeName.value.trim(); const initials = els.employeeInitials.value.trim().toUpperCase();
-      if (!name || !initials) return;
+      const name = els.employeeName.value.trim(); const initials = els.employeeInitials.value.trim().toUpperCase(); const email = els.employeeEmail.value.trim().toLowerCase();
+      if (!name || !initials || !email) return;
       setSaving(els.saveEmployeeButton);
       try {
-        await addEmployee({ name, initials, vacationAllowance: Number(els.employeeVacation.value), sickAllowance: Number(els.employeeSick.value), createdAt: Date.now() });
+        await addEmployee({ name, initials, email, vacationAllowance: Number(els.employeeVacation.value), sickAllowance: Number(els.employeeSick.value), createdAt: Date.now() });
         state.selectedEmployeeId = state.employees[state.employees.length - 1].id;
         closeDialog(els.employeeDialog); renderAll(); showToast(`${name} was added successfully.`);
       } catch (error) { console.error(error); showToast(error.message || "Employee could not be saved.", "error"); }
@@ -737,7 +773,8 @@
       els.modeBadge.classList.add("firebase");
       els.modeText.textContent = "Firebase connected";
       els.authGate.hidden = true;
-      els.openAddEmployee.disabled = false;
+      els.openAddEmployee.hidden = !isAdmin();
+      els.openAddEmployee.disabled = !isAdmin();
       els.signOutButton.hidden = false;
       els.signedInUser.textContent = user.email || "Signed in";
       els.signedInUser.classList.add("visible");
@@ -787,7 +824,7 @@
         dbApi.onAuthStateChanged(dbApi.auth, async user => {
           if (!user) return setSignedOutState();
           try { await setAuthenticatedState(user); }
-          catch (error) { console.error(error); setSignedOutState("Signed in, but Firestore could not be loaded. Check Firestore rules."); }
+          catch (error) { console.error(error); setSignedOutState(error.message || "Signed in, but Firestore could not be loaded. Check Firestore rules."); }
         });
       } catch (error) { console.error(error); setSignedOutState("Firebase could not initialize. Check the project configuration."); }
     }
