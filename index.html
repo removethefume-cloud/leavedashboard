@@ -301,7 +301,6 @@
       </div>
       <div class="topbar-actions">
         <span id="modeBadge" class="mode-badge"><span class="mode-dot"></span><span id="modeText">Sign in required</span></span>
-        <span id="signedInUser" class="signed-in-user"></span>
         <button id="signOutButton" class="button button-secondary" type="button" hidden>Sign Out</button>
         <button id="openAddEmployee" class="button button-secondary" type="button" disabled>+ Add Employee</button>
       </div>
@@ -771,13 +770,11 @@
       state.user = user;
       state.mode = "firebase";
       els.modeBadge.classList.add("firebase");
-      els.modeText.textContent = "Firebase connected";
+      els.modeText.textContent = user.email || "Signed in";
       els.authGate.hidden = true;
       els.openAddEmployee.hidden = !isAdmin();
       els.openAddEmployee.disabled = !isAdmin();
       els.signOutButton.hidden = false;
-      els.signedInUser.textContent = user.email || "Signed in";
-      els.signedInUser.classList.add("visible");
       await loadData();
     }
 
@@ -785,7 +782,7 @@
       state.user = null; state.mode = "offline"; state.employees = []; state.leaves = []; state.selectedEmployeeId = null;
       els.modeBadge.classList.remove("firebase"); els.modeText.textContent = "Sign in required";
       els.openAddEmployee.disabled = true; els.openAddLeave.disabled = true; els.deleteEmployee.disabled = true;
-      els.signOutButton.hidden = true; els.signedInUser.classList.remove("visible");
+      els.signOutButton.hidden = true;
       els.authMessage.textContent = message; els.authGate.hidden = false; renderAll();
     }
 
