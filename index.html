@@ -176,6 +176,16 @@
     .state-approved { color: var(--green); background: var(--green-soft); }
     .state-pending { color: var(--amber); background: var(--amber-soft); }
     .state-cancelled { color: var(--red); background: var(--red-soft); }
+    .state-rejected { color: var(--red); background: var(--red-soft); }
+    .approval-panel { margin: 0 0 22px; }
+    .approval-list { display: grid; gap: 12px; }
+    .approval-card { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 16px; align-items: center; padding: 16px 18px; border: 1px solid var(--border); border-radius: 18px; background: #fff; }
+    .approval-card h3 { margin: 0 0 5px; font-size: 16px; }
+    .approval-meta { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .approval-note { margin-top: 5px; color: var(--navy); font-size: 13px; }
+    .approval-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .approval-actions .button { min-width: 92px; }
+    .approval-empty { padding: 18px; border: 1px dashed var(--border); border-radius: 16px; color: var(--muted); text-align: center; background: #fbfcff; }
     .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
     .mini-button { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: white; color: var(--muted); }
     .mini-button:hover { color: var(--blue); border-color: #abc0f4; }
@@ -327,6 +337,14 @@
       </article>
     </section>
 
+    <section id="pendingApprovalsPanel" class="panel approval-panel" hidden>
+      <div class="section-heading">
+        <div><p class="eyebrow">Manager action</p><h2>Pending Approvals</h2></div>
+        <span id="pendingApprovalCount" class="status-pill">0 pending</span>
+      </div>
+      <div id="pendingApprovalList" class="approval-list"></div>
+    </section>
+
     <main>
       <section class="panel employee-panel">
         <div class="section-heading">
@@ -398,7 +416,6 @@
       <label>Full name<input id="employeeName" type="text" placeholder="Example: Full Name" required /></label>
       <label>Initials<input id="employeeInitials" type="text" maxlength="3" placeholder="Example: AA" required /></label>
       <label>Work email<input id="employeeEmail" type="email" placeholder="name@plymovent.com" required /></label>
-      <label>Manager email<input id="employeeManagerEmail" type="email" placeholder="manager@plymovent.com" required /></label>
       <div class="two-column-fields">
         <label>Vacation allowance<input id="employeeVacation" type="number" min="0" step="0.5" value="10" required /></label>
         <label>Sick allowance<input id="employeeSick" type="number" min="0" step="0.5" value="5" required /></label>
@@ -413,7 +430,7 @@
       <p id="leaveEmployeeLabel" class="selected-person"></p>
       <label>Leave type<select id="leaveType" required><option value="Vacation">Vacation</option><option value="Sick">Sick</option></select></label>
       <div class="two-column-fields"><label>Start date<input id="leaveStartDate" type="date" required /></label><label>End date<input id="leaveEndDate" type="date" required /></label></div>
-      <label id="leaveStatusField">Status<select id="leaveStatus" required><option value="Approved">Approved</option><option value="Pending">Pending</option><option value="Cancelled">Cancelled</option></select></label>
+      <label id="leaveStatusField">Status<select id="leaveStatus" required><option value="Approved">Approved</option><option value="Pending">Pending</option><option value="Rejected">Rejected</option><option value="Cancelled">Cancelled</option></select></label>
       <label>Leave duration<select id="leaveDuration" required><option value="Full Day">Full Day</option><option value="Half Day">Half Day</option></select></label>
       <label>Notes<textarea id="leaveNotes" rows="3" placeholder="Optional notes"></textarea></label>
       <p class="form-help">Weekends and the listed public holidays are excluded when calculating leave days.</p>
@@ -468,11 +485,11 @@
       deleteEmployee: $("deleteEmployee"), openAddLeave: $("openAddLeave"), openAddEmployee: $("openAddEmployee"),
       vacationUsed: $("vacationUsed"), vacationAllowance: $("vacationAllowance"), vacationRemaining: $("vacationRemaining"), vacationProgress: $("vacationProgress"),
       sickUsed: $("sickUsed"), sickAllowance: $("sickAllowance"), sickRemaining: $("sickRemaining"), sickProgress: $("sickProgress"),
-      holidayDays: $("holidayDays"), historyCount: $("historyCount"), removeFilter: $("removeFilter"), leaveHistoryBody: $("leaveHistoryBody"), holidayList: $("holidayList"),
+      holidayDays: $("holidayDays"), historyCount: $("historyCount"), removeFilter: $("removeFilter"), leaveHistoryBody: $("leaveHistoryBody"), holidayList: $("holidayList"), pendingApprovalsPanel: $("pendingApprovalsPanel"), pendingApprovalCount: $("pendingApprovalCount"), pendingApprovalList: $("pendingApprovalList"),
       currentHolidayLabel: $("currentHolidayLabel"), currentHolidayName: $("currentHolidayName"), currentHolidayDate: $("currentHolidayDate"), currentHolidayBadge: $("currentHolidayBadge"),
       nextHolidayName: $("nextHolidayName"), nextHolidayDate: $("nextHolidayDate"), nextHolidayBadge: $("nextHolidayBadge"),
-      employeeDialog: $("employeeDialog"), employeeForm: $("employeeForm"), employeeName: $("employeeName"), employeeInitials: $("employeeInitials"), employeeEmail: $("employeeEmail"), employeeManagerEmail: $("employeeManagerEmail"), employeeVacation: $("employeeVacation"), employeeSick: $("employeeSick"), saveEmployeeButton: $("saveEmployeeButton"),
-      leaveDialog: $("leaveDialog"), leaveForm: $("leaveForm"), leaveDialogTitle: $("leaveDialogTitle"), leaveEmployeeLabel: $("leaveEmployeeLabel"), leaveType: $("leaveType"), leaveStartDate: $("leaveStartDate"), leaveEndDate: $("leaveEndDate"), leaveStatus: $("leaveStatus"), leaveStatusField: $("leaveStatusField"), leaveDuration: $("leaveDuration"), leaveNotes: $("leaveNotes"), saveLeaveButton: $("saveLeaveButton"),
+      employeeDialog: $("employeeDialog"), employeeForm: $("employeeForm"), employeeName: $("employeeName"), employeeInitials: $("employeeInitials"), employeeEmail: $("employeeEmail"), employeeVacation: $("employeeVacation"), employeeSick: $("employeeSick"), saveEmployeeButton: $("saveEmployeeButton"),
+      leaveDialog: $("leaveDialog"), leaveForm: $("leaveForm"), leaveDialogTitle: $("leaveDialogTitle"), leaveEmployeeLabel: $("leaveEmployeeLabel"), leaveType: $("leaveType"), leaveStartDate: $("leaveStartDate"), leaveEndDate: $("leaveEndDate"), leaveStatusField: $("leaveStatusField"), leaveStatus: $("leaveStatus"), leaveDuration: $("leaveDuration"), leaveNotes: $("leaveNotes"), saveLeaveButton: $("saveLeaveButton"),
       confirmDialog: $("confirmDialog"), confirmTitle: $("confirmTitle"), confirmMessage: $("confirmMessage"), confirmActionButton: $("confirmActionButton"), toast: $("toast"), modeBadge: $("modeBadge"), modeText: $("modeText"), authGate: $("authGate"), loginForm: $("loginForm"), loginEmail: $("loginEmail"), loginPassword: $("loginPassword"), loginError: $("loginError"), loginButton: $("loginButton"), authMessage: $("authMessage"), signedInUser: $("signedInUser"), signOutButton: $("signOutButton")
     };
 
@@ -600,7 +617,18 @@
       state.leaves = state.leaves.filter(l => l.id !== leaveId);
     }
 
-    function renderAll() { renderEmployees(); renderSelectedEmployee(); renderKpis(); renderHistory(); renderHolidays(); }
+    async function updateLeaveStatus(leaveId, status) {
+      if (!isAdmin()) throw new Error("Only the administrator can approve or reject leave requests.");
+      const record = state.leaves.find(l => l.id === leaveId);
+      if (!record) throw new Error("Leave request could not be found.");
+      await withTimeout(dbApi.updateDoc(dbApi.doc(dbApi.db, "leaveEntries", leaveId), { status, updatedAt: Date.now(), reviewedBy: currentUserEmail(), reviewedAt: Date.now() }));
+      record.status = status;
+      record.updatedAt = Date.now();
+      record.reviewedBy = currentUserEmail();
+      record.reviewedAt = Date.now();
+    }
+
+    function renderAll() { renderEmployees(); renderSelectedEmployee(); renderKpis(); renderPendingApprovals(); renderHistory(); renderHolidays(); }
     function renderEmployees() {
       els.employeeButtons.innerHTML = "";
       state.employees.forEach(employee => {
@@ -640,6 +668,54 @@
       els.holidayDays.textContent = PUBLIC_HOLIDAYS.reduce((sum,h) => sum + h.days, 0);
       document.querySelectorAll(".filter-card").forEach(card => card.classList.toggle("active-filter", card.dataset.leaveFilter === state.activeFilter));
     }
+    function renderPendingApprovals() {
+      if (!els.pendingApprovalsPanel) return;
+      els.pendingApprovalsPanel.hidden = !isAdmin();
+      if (!isAdmin()) return;
+
+      const pending = state.leaves
+        .filter(l => l.status === "Pending")
+        .sort((a,b) => String(a.startDate).localeCompare(String(b.startDate)));
+
+      els.pendingApprovalCount.textContent = `${pending.length} pending`;
+      if (!pending.length) {
+        els.pendingApprovalList.innerHTML = `<div class="approval-empty">No leave requests are waiting for approval.</div>`;
+        return;
+      }
+
+      els.pendingApprovalList.innerHTML = pending.map(record => {
+        const employee = state.employees.find(e => e.id === record.employeeId);
+        const dates = record.endDate && record.endDate !== record.startDate
+          ? `${formatDate(record.startDate)} to ${formatDate(record.endDate)}`
+          : formatDate(record.startDate);
+        return `<div class="approval-card">
+          <div>
+            <h3>${escapeHtml(employee?.name || "Employee")}</h3>
+            <p class="approval-meta">${escapeHtml(record.type)} · ${escapeHtml(dates)} · ${escapeHtml(record.days)} ${Number(record.days) === 1 ? "day" : "days"}</p>
+            ${record.notes ? `<p class="approval-note">${escapeHtml(record.notes)}</p>` : ""}
+          </div>
+          <div class="approval-actions">
+            <button class="button button-primary" type="button" data-approve-leave="${record.id}">Approve</button>
+            <button class="button button-danger-outline" type="button" data-reject-leave="${record.id}">Reject</button>
+          </div>
+        </div>`;
+      }).join("");
+
+      els.pendingApprovalList.querySelectorAll("[data-approve-leave]").forEach(button => button.addEventListener("click", async () => {
+        button.disabled = true;
+        try { await updateLeaveStatus(button.dataset.approveLeave, "Approved"); renderAll(); showToast("Leave request approved."); }
+        catch (error) { console.error(error); showToast(error.message || "Leave request could not be approved.", "error"); }
+        finally { button.disabled = false; }
+      }));
+
+      els.pendingApprovalList.querySelectorAll("[data-reject-leave]").forEach(button => button.addEventListener("click", async () => {
+        button.disabled = true;
+        try { await updateLeaveStatus(button.dataset.rejectLeave, "Rejected"); renderAll(); showToast("Leave request rejected."); }
+        catch (error) { console.error(error); showToast(error.message || "Leave request could not be rejected.", "error"); }
+        finally { button.disabled = false; }
+      }));
+    }
+
     function renderHistory() {
       const employee = selectedEmployee();
       if (!employee) { els.leaveHistoryBody.innerHTML = `<tr><td colspan="6" class="empty-state">Select an employee to see their leave history.</td></tr>`; els.historyCount.textContent = "0 entries"; els.removeFilter.hidden = true; return; }
@@ -657,7 +733,7 @@
           <td><strong>${escapeHtml(record.days)}</strong></td>
           <td><span class="state-badge state-${record.status.toLowerCase()}">${escapeHtml(record.status)}</span></td>
           <td>${escapeHtml(record.notes || "—")}</td>
-          <td>${isAdmin() ? `<div class="row-actions"><button class="mini-button" type="button" data-edit-leave="${record.id}" title="Edit">✎</button><button class="mini-button delete" type="button" data-delete-leave="${record.id}" title="Delete">×</button></div>` : ""}</td>
+          <td><div class="row-actions">${(isAdmin() || record.status === "Pending") ? `<button class="mini-button" type="button" data-edit-leave="${record.id}" title="Edit">✎</button><button class="mini-button delete" type="button" data-delete-leave="${record.id}" title="Delete">×</button>` : ""}</div></td>
         </tr>`).join("");
       els.leaveHistoryBody.querySelectorAll("[data-edit-leave]").forEach(btn => btn.addEventListener("click", () => openLeaveDialog(btn.dataset.editLeave)));
       els.leaveHistoryBody.querySelectorAll("[data-delete-leave]").forEach(btn => btn.addEventListener("click", () => confirmDeleteLeave(btn.dataset.deleteLeave)));
@@ -716,7 +792,7 @@
       els.leaveEmployeeLabel.textContent = `${leaveId ? "Editing" : "Adding"} leave for ${employee.name}`;
       const today = new Date().toISOString().slice(0,10); els.leaveStartDate.value = today; els.leaveEndDate.value = today; els.leaveStatus.value = isAdmin() ? "Approved" : "Pending"; els.leaveDuration.value = "Full Day";
       els.leaveStatusField.hidden = !isAdmin();
-      if (leaveId) { const record = state.leaves.find(l => l.id === leaveId); if (!record) return; els.leaveType.value = record.type; els.leaveStartDate.value = record.startDate; els.leaveEndDate.value = record.endDate; els.leaveStatus.value = record.status; els.leaveDuration.value = record.duration || (Number(record.days) === 0.5 ? "Half Day" : "Full Day"); els.leaveNotes.value = record.notes || ""; }
+      if (leaveId) { const record = state.leaves.find(l => l.id === leaveId); if (!record) return; if (!isAdmin() && record.status !== "Pending") return showToast("Only pending leave requests can be edited.", "error"); els.leaveType.value = record.type; els.leaveStartDate.value = record.startDate; els.leaveEndDate.value = record.endDate; els.leaveStatus.value = isAdmin() ? record.status : "Pending"; els.leaveDuration.value = record.duration || (Number(record.days) === 0.5 ? "Half Day" : "Full Day"); els.leaveNotes.value = record.notes || ""; }
       showDialog(els.leaveDialog);
     }
     function askConfirmation(title, message, actionText, handler) { els.confirmTitle.textContent = title; els.confirmMessage.textContent = message; els.confirmActionButton.textContent = actionText; state.confirmHandler = handler; showDialog(els.confirmDialog); }
@@ -724,11 +800,11 @@
 
     els.employeeForm.addEventListener("submit", async event => {
       event.preventDefault();
-      const name = els.employeeName.value.trim(); const initials = els.employeeInitials.value.trim().toUpperCase(); const email = els.employeeEmail.value.trim().toLowerCase(); const managerEmail = els.employeeManagerEmail.value.trim().toLowerCase();
-      if (!name || !initials || !email || !managerEmail) return;
+      const name = els.employeeName.value.trim(); const initials = els.employeeInitials.value.trim().toUpperCase(); const email = els.employeeEmail.value.trim().toLowerCase();
+      if (!name || !initials || !email) return;
       setSaving(els.saveEmployeeButton);
       try {
-        await addEmployee({ name, initials, email, managerEmail, vacationAllowance: Number(els.employeeVacation.value), sickAllowance: Number(els.employeeSick.value), createdAt: Date.now() });
+        await addEmployee({ name, initials, email, vacationAllowance: Number(els.employeeVacation.value), sickAllowance: Number(els.employeeSick.value), createdAt: Date.now() });
         state.selectedEmployeeId = state.employees[state.employees.length - 1].id;
         closeDialog(els.employeeDialog); renderAll(); showToast(`${name} was added successfully.`);
       } catch (error) { console.error(error); showToast(error.message || "Employee could not be saved.", "error"); }
@@ -746,12 +822,9 @@
       }
       setSaving(els.saveLeaveButton, state.editingLeaveId ? "Updating..." : "Saving...");
       try {
-        const isNewRequest = !state.editingLeaveId;
         const status = isAdmin() ? els.leaveStatus.value : "Pending";
-        const managerEmail = String(employee.managerEmail || "").trim().toLowerCase();
-        if (!isAdmin() && !managerEmail) return showToast("No manager email is linked to your profile. Ask the administrator to update your Employee Hub profile.", "error");
-        await saveLeave({ employeeId: employee.id, type: els.leaveType.value, startDate: els.leaveStartDate.value, endDate: els.leaveEndDate.value, days, duration: els.leaveDuration.value, status, notes: els.leaveNotes.value.trim(), managerEmail, submittedBy: currentUserEmail(), submittedAt: state.leaves.find(l => l.id === state.editingLeaveId)?.submittedAt || Date.now(), updatedAt: Date.now(), createdAt: state.leaves.find(l => l.id === state.editingLeaveId)?.createdAt || Date.now() }, state.editingLeaveId);
-        closeDialog(els.leaveDialog); renderAll(); showToast(isAdmin() ? (state.editingLeaveId ? "Leave entry updated." : "Leave entry added.") : "Leave request submitted for manager approval."); state.editingLeaveId = null;
+        await saveLeave({ employeeId: employee.id, type: els.leaveType.value, startDate: els.leaveStartDate.value, endDate: els.leaveEndDate.value, days, duration: els.leaveDuration.value, status, notes: els.leaveNotes.value.trim(), updatedAt: Date.now(), createdAt: state.leaves.find(l => l.id === state.editingLeaveId)?.createdAt || Date.now() }, state.editingLeaveId);
+        closeDialog(els.leaveDialog); renderAll(); showToast(state.editingLeaveId ? "Leave entry updated." : "Leave entry added."); state.editingLeaveId = null;
       } catch (error) { console.error(error); showToast(error.message || "Leave could not be saved.", "error"); }
       finally { resetButton(els.saveLeaveButton, state.editingLeaveId ? "Update Leave" : "Save Leave"); }
     });
