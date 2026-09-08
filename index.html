@@ -179,13 +179,23 @@
     .state-rejected { color: var(--red); background: var(--red-soft); }
     .approval-panel { margin: 0 0 22px; }
     .approval-list { display: grid; gap: 12px; }
-    .approval-card { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 16px; align-items: center; padding: 16px 18px; border: 1px solid var(--border); border-radius: 18px; background: #fff; }
-    .approval-card h3 { margin: 0 0 5px; font-size: 16px; }
-    .approval-meta { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
-    .approval-note { margin-top: 5px; color: var(--navy); font-size: 13px; }
-    .approval-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .approval-headings, .approval-card { display: grid; grid-template-columns: minmax(170px,.9fr) minmax(280px,1.25fr) minmax(160px,1fr) auto; gap: 20px; align-items: center; }
+    .approval-headings { padding: 0 18px 8px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .approval-card { padding: 16px 18px; border: 1px solid var(--border); border-radius: 18px; background: #fff; }
+    .approval-employee { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .approval-avatar { width: 42px; height: 42px; flex: 0 0 42px; display: grid; place-items: center; border-radius: 14px; background: #f0edff; color: var(--blue); font-weight: 850; }
+    .approval-card h3 { margin: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .approval-meta, .approval-note { margin: 0; font-size: 13px; line-height: 1.45; }
+    .approval-meta { color: var(--muted); }
+    .approval-note { color: var(--navy); overflow-wrap: anywhere; }
+    .approval-actions { display: flex; gap: 8px; flex-wrap: nowrap; justify-content: flex-end; }
     .approval-actions .button { min-width: 92px; }
     .approval-empty { padding: 18px; border: 1px dashed var(--border); border-radius: 16px; color: var(--muted); text-align: center; background: #fbfcff; }
+    @media (max-width: 860px) {
+      .approval-headings { display: none; }
+      .approval-card { grid-template-columns: 1fr; gap: 10px; align-items: start; }
+      .approval-actions { justify-content: flex-start; margin-top: 2px; }
+    }
     .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
     .mini-button { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: white; color: var(--muted); }
     .mini-button:hover { color: var(--blue); border-color: #abc0f4; }
@@ -683,17 +693,18 @@
         return;
       }
 
-      els.pendingApprovalList.innerHTML = pending.map(record => {
+      const headings = `<div class="approval-headings"><span>Employee</span><span>Leave Details</span><span>Notes</span><span>Actions</span></div>`;
+      els.pendingApprovalList.innerHTML = headings + pending.map(record => {
         const employee = state.employees.find(e => e.id === record.employeeId);
+        const employeeName = employee?.name || "Employee";
+        const initials = employee?.initials || employeeName.split(/\s+/).map(part => part[0]).join("").slice(0,2).toUpperCase();
         const dates = record.endDate && record.endDate !== record.startDate
           ? `${formatDate(record.startDate)} to ${formatDate(record.endDate)}`
           : formatDate(record.startDate);
         return `<div class="approval-card">
-          <div>
-            <h3>${escapeHtml(employee?.name || "Employee")}</h3>
-            <p class="approval-meta">${escapeHtml(record.type)} · ${escapeHtml(dates)} · ${escapeHtml(record.days)} ${Number(record.days) === 1 ? "day" : "days"}</p>
-            ${record.notes ? `<p class="approval-note">${escapeHtml(record.notes)}</p>` : ""}
-          </div>
+          <div class="approval-employee"><span class="approval-avatar">${escapeHtml(initials)}</span><h3>${escapeHtml(employeeName)}</h3></div>
+          <p class="approval-meta">${escapeHtml(record.type)} · ${escapeHtml(dates)} · ${escapeHtml(record.days)} ${Number(record.days) === 1 ? "day" : "days"}</p>
+          <p class="approval-note">${record.notes ? escapeHtml(record.notes) : "—"}</p>
           <div class="approval-actions">
             <button class="button button-primary" type="button" data-approve-leave="${record.id}">Approve</button>
             <button class="button button-danger-outline" type="button" data-reject-leave="${record.id}">Reject</button>
