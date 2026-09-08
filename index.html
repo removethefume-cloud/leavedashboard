@@ -441,7 +441,7 @@
       <p id="leaveEmployeeLabel" class="selected-person"></p>
       <label>Leave type<select id="leaveType" required><option value="Vacation">Vacation</option><option value="Sick">Sick</option></select></label>
       <div class="two-column-fields"><label>Start date<input id="leaveStartDate" type="date" required /></label><label>End date<input id="leaveEndDate" type="date" required /></label></div>
-      <label id="leaveStatusField">Status<select id="leaveStatus" required><option value="Approved">Approved</option><option value="Pending">Pending</option><option value="Rejected">Rejected</option><option value="Cancelled">Cancelled</option></select></label>
+
       <label>Leave duration<select id="leaveDuration" required><option value="Full Day">Full Day</option><option value="Half Day">Half Day</option></select></label>
       <label>Notes<textarea id="leaveNotes" rows="3" placeholder="Optional notes"></textarea></label>
       <p class="form-help">Weekends and the listed public holidays are excluded when calculating leave days.</p>
@@ -500,7 +500,7 @@
       currentHolidayLabel: $("currentHolidayLabel"), currentHolidayName: $("currentHolidayName"), currentHolidayDate: $("currentHolidayDate"), currentHolidayBadge: $("currentHolidayBadge"),
       nextHolidayName: $("nextHolidayName"), nextHolidayDate: $("nextHolidayDate"), nextHolidayBadge: $("nextHolidayBadge"),
       employeeDialog: $("employeeDialog"), employeeForm: $("employeeForm"), employeeName: $("employeeName"), employeeInitials: $("employeeInitials"), employeeEmail: $("employeeEmail"), employeeVacation: $("employeeVacation"), employeeSick: $("employeeSick"), saveEmployeeButton: $("saveEmployeeButton"),
-      leaveDialog: $("leaveDialog"), leaveForm: $("leaveForm"), leaveDialogTitle: $("leaveDialogTitle"), leaveEmployeeLabel: $("leaveEmployeeLabel"), leaveType: $("leaveType"), leaveStartDate: $("leaveStartDate"), leaveEndDate: $("leaveEndDate"), leaveStatusField: $("leaveStatusField"), leaveStatus: $("leaveStatus"), leaveDuration: $("leaveDuration"), leaveNotes: $("leaveNotes"), saveLeaveButton: $("saveLeaveButton"),
+      leaveDialog: $("leaveDialog"), leaveForm: $("leaveForm"), leaveDialogTitle: $("leaveDialogTitle"), leaveEmployeeLabel: $("leaveEmployeeLabel"), leaveType: $("leaveType"), leaveStartDate: $("leaveStartDate"), leaveEndDate: $("leaveEndDate"), leaveDuration: $("leaveDuration"), leaveNotes: $("leaveNotes"), saveLeaveButton: $("saveLeaveButton"),
       confirmDialog: $("confirmDialog"), confirmTitle: $("confirmTitle"), confirmMessage: $("confirmMessage"), confirmActionButton: $("confirmActionButton"), toast: $("toast"), modeBadge: $("modeBadge"), modeText: $("modeText"), authGate: $("authGate"), loginForm: $("loginForm"), loginEmail: $("loginEmail"), loginPassword: $("loginPassword"), loginError: $("loginError"), loginButton: $("loginButton"), authMessage: $("authMessage"), signedInUser: $("signedInUser"), signOutButton: $("signOutButton")
     };
 
@@ -708,7 +708,7 @@
           <p class="approval-note">${record.notes ? escapeHtml(record.notes) : "—"}</p>
           <div class="approval-actions">
             <button class="button button-primary" type="button" data-approve-leave="${record.id}">Approve</button>
-            <button class="button button-danger-outline" type="button" data-reject-leave="${record.id}">Reject</button>
+            <button class="button button-danger-outline" type="button" data-reject-leave="${record.id}">Cancel</button>
           </div>
         </div>`;
       }).join("");
@@ -722,11 +722,13 @@
 
       els.pendingApprovalList.querySelectorAll("[data-reject-leave]").forEach(button => button.addEventListener("click", async () => {
         button.disabled = true;
-        try { await updateLeaveStatus(button.dataset.rejectLeave, "Rejected"); renderAll(); showToast("Leave request rejected."); }
+        try { await updateLeaveStatus(button.dataset.rejectLeave, "Cancelled"); renderAll(); showToast("Leave request cancelled."); }
         catch (error) { console.error(error); showToast(error.message || "Leave request could not be rejected.", "error"); }
         finally { button.disabled = false; }
       }));
     }
+
+    function displayStatus(status) { return status === "Rejected" ? "Cancelled" : status; }
 
     function renderHistory() {
       const employee = selectedEmployee();
@@ -802,9 +804,8 @@
       els.leaveForm.reset(); resetButton(els.saveLeaveButton, leaveId ? "Update Leave" : "Save Leave");
       els.leaveDialogTitle.textContent = leaveId ? "Edit Leave" : "Add Leave";
       els.leaveEmployeeLabel.textContent = `${leaveId ? "Editing" : "Adding"} leave for ${employee.name}`;
-      const today = new Date().toISOString().slice(0,10); els.leaveStartDate.value = today; els.leaveEndDate.value = today; els.leaveStatus.value = isAdmin() ? "Approved" : "Pending"; els.leaveDuration.value = "Full Day";
-      els.leaveStatusField.hidden = !isAdmin();
-      if (leaveId) { const record = state.leaves.find(l => l.id === leaveId); if (!record) return; if (!isAdmin() && record.status !== "Pending") return showToast("Only pending leave requests can be edited.", "error"); els.leaveType.value = record.type; els.leaveStartDate.value = record.startDate; els.leaveEndDate.value = record.endDate; els.leaveStatus.value = isAdmin() ? record.status : "Pending"; els.leaveDuration.value = record.duration || (Number(record.days) === 0.5 ? "Half Day" : "Full Day"); els.leaveNotes.value = record.notes || ""; }
+      const today = new Date().toISOString().slice(0,10); els.leaveStartDate.value = today; els.leaveEndDate.value = today; els.leaveDuration.value = "Full Day";
+      if (leaveId) { const record = state.leaves.find(l => l.id === leaveId); if (!record) return; if (!isAdmin() && record.status !== "Pending") return showToast("Only pending leave requests can be edited.", "error"); els.leaveType.value = record.type; els.leaveStartDate.value = record.startDate; els.leaveEndDate.value = record.endDate; els.leaveDuration.value = record.duration || (Number(record.days) === 0.5 ? "Half Day" : "Full Day"); els.leaveNotes.value = record.notes || ""; }
       showDialog(els.leaveDialog);
     }
     function askConfirmation(title, message, actionText, handler) { els.confirmTitle.textContent = title; els.confirmMessage.textContent = message; els.confirmActionButton.textContent = actionText; state.confirmHandler = handler; showDialog(els.confirmDialog); }
@@ -834,7 +835,8 @@
       }
       setSaving(els.saveLeaveButton, state.editingLeaveId ? "Updating..." : "Saving...");
       try {
-        const status = isAdmin() ? els.leaveStatus.value : "Pending";
+        const existingLeave = state.editingLeaveId ? state.leaves.find(l => l.id === state.editingLeaveId) : null;
+        const status = existingLeave ? existingLeave.status : (isAdmin() ? "Approved" : "Pending");
         await saveLeave({ employeeId: employee.id, type: els.leaveType.value, startDate: els.leaveStartDate.value, endDate: els.leaveEndDate.value, days, duration: els.leaveDuration.value, status, notes: els.leaveNotes.value.trim(), updatedAt: Date.now(), createdAt: state.leaves.find(l => l.id === state.editingLeaveId)?.createdAt || Date.now() }, state.editingLeaveId);
         closeDialog(els.leaveDialog); renderAll(); showToast(state.editingLeaveId ? "Leave entry updated." : "Leave entry added."); state.editingLeaveId = null;
       } catch (error) { console.error(error); showToast(error.message || "Leave could not be saved.", "error"); }
