@@ -325,7 +325,13 @@
     .calendar-date-row { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:7px; }
     .calendar-date { width:28px; height:28px; display:grid; place-items:center; border-radius:9px; font-size:12px; font-weight:800; }
     .calendar-day.today .calendar-date { color:white; background:var(--blue); }
-    .overlap-badge { display:inline-flex; align-items:center; gap:4px; padding:4px 7px; border:1px solid #f0cf87; border-radius:999px; color:#8a5a10; background:#fff7df; font-size:9px; font-weight:850; white-space:nowrap; }
+    .overlap-wrap { position:relative; display:inline-flex; }
+    .overlap-badge { appearance:none; display:inline-flex; align-items:center; gap:4px; padding:4px 8px; border:1px solid rgba(74,96,126,.28); border-radius:999px; color:#334b68; background:linear-gradient(135deg,rgba(255,255,255,.82),rgba(221,231,242,.68)); box-shadow:0 4px 12px rgba(31,49,76,.10), inset 0 1px 0 rgba(255,255,255,.8); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); font-size:9px; font-weight:850; white-space:nowrap; cursor:default; }
+    .overlap-tooltip { position:absolute; z-index:30; top:calc(100% + 7px); right:0; min-width:160px; max-width:220px; padding:10px 12px; border:1px solid rgba(74,96,126,.22); border-radius:12px; color:#263b56; background:linear-gradient(145deg,rgba(255,255,255,.94),rgba(235,241,247,.90)); box-shadow:0 12px 28px rgba(31,49,76,.16); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); opacity:0; visibility:hidden; transform:translateY(-3px); transition:opacity .15s ease,transform .15s ease,visibility .15s ease; pointer-events:none; }
+    .overlap-tooltip strong { display:block; margin-bottom:5px; font-size:10px; color:#1f3653; }
+    .overlap-tooltip span { display:block; font-size:10px; line-height:1.55; font-weight:700; }
+    .overlap-wrap:hover .overlap-tooltip, .overlap-wrap:focus-within .overlap-tooltip { opacity:1; visibility:visible; transform:translateY(0); }
+
     .leave-lanes { display:grid; grid-auto-rows:26px; margin-top:5px; }
     .leave-chip { position:relative; z-index:2; display:block; align-self:start; margin:0 -10px; padding:6px 17px; border-radius:0; font-size:10px; font-weight:800; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .leave-chip.segment-start { margin-left:0; padding-left:7px; border-radius:8px 0 0 8px; }
@@ -760,7 +766,7 @@
       els.calendarMonthTitle.textContent = new Intl.DateTimeFormat("en-CA", { month:"long", year:"numeric" }).format(new Date(year, month, 1));
       if (els.calendarLegend) {
         const people = state.employees.map(e => { const c = employeeCalendarColor(e.id); return `<span class="employee-color-legend"><i class="employee-color-swatch" style="--legend-from:${c.from};--legend-to:${c.to};--legend-border:${c.border}"></i>${escapeHtml(e.name)}</span>`; }).join("");
-        els.calendarLegend.innerHTML = people + `<span><i class="legend-dot" style="background:#fff7df"></i>Overlap = 2+ employees off</span><span><i class="legend-dot" style="background:#f0ecff"></i>Public holiday</span>`;
+        els.calendarLegend.innerHTML = people + `<span><i class="legend-dot" style="background:#dfe8f2;border:1px solid #9aabc0"></i>Overlap badge = 2+ employees off</span><span><i class="legend-dot" style="background:#f0ecff"></i>Public holiday</span>`;
       }
       const first = new Date(year, month, 1);
       const mondayOffset = (first.getDay() + 6) % 7;
@@ -768,6 +774,7 @@
       const todayIso = isoLocal(new Date());
       const approved = state.leaves.filter(l => displayStatus(l.status) === "Approved");
       let html = "";
+      let previousOverlapKey = "";
 
       // Assign a fixed lane to each leave for each calendar week. This keeps a
       // multi-day leave perfectly horizontal even when another employee overlaps it.
@@ -801,6 +808,9 @@
           const leaves = weekLeaves.filter(l => l.startDate <= iso && (l.endDate || l.startDate) >= iso);
           const employeeIds = new Set(leaves.map(l => l.employeeId));
           const overlap = employeeIds.size >= 2;
+          const overlapKey = overlap ? [...employeeIds].sort().join("|") : "";
+          const showOverlapBadge = overlap && overlapKey !== previousOverlapKey;
+          const overlapNames = overlap ? [...employeeIds].map(id => state.employees.find(e => e.id === id)?.name || "Employee").sort() : [];
           const holiday = PUBLIC_HOLIDAYS.find(h => iso >= h.date && iso <= (h.endDate || h.date));
           const chips = leaves.map(l => {
             const e = state.employees.find(x => x.id === l.employeeId);
@@ -827,7 +837,9 @@
             const gradientPosition = visibleDays > 1 ? (dayIndex / (visibleDays - 1)) * 100 : 0;
             return `<span class="leave-chip${segmentStart?" segment-start":""}${segmentEnd?" segment-end":""}" style="grid-row:${lane};--leave-from:${color.from};--leave-to:${color.to};--leave-border:${color.border};--leave-text:${color.text};--gradient-size:${gradientSize}%;--gradient-position:${gradientPosition}%" title="${escapeHtml((e?.name||"Employee")+" · "+(l.type||"Leave"))}">${label}</span>`;
           }).join("");
-          html += `<div class="calendar-day${weekend?" weekend":""}${!inMonth?" outside":""}${iso===todayIso?" today":""}"><div class="calendar-date-row"><span class="calendar-date">${d.getDate()}</span>${overlap?`<span class="overlap-badge">Overlap · ${employeeIds.size} off</span>`:""}</div>${holiday?`<span class="holiday-chip">${escapeHtml(holiday.name)}</span>`:""}<div class="leave-lanes">${chips}</div></div>`;
+          const overlapBadge = showOverlapBadge ? `<span class="overlap-wrap"><button class="overlap-badge" type="button" aria-label="${employeeIds.size} employees on leave. Show names">Overlap · ${employeeIds.size} off</button><span class="overlap-tooltip" role="tooltip"><strong>Employees on leave</strong>${overlapNames.map(name => `<span>${escapeHtml(name)}</span>`).join("")}</span></span>` : "";
+          html += `<div class="calendar-day${weekend?" weekend":""}${!inMonth?" outside":""}${iso===todayIso?" today":""}"><div class="calendar-date-row"><span class="calendar-date">${d.getDate()}</span>${overlapBadge}</div>${holiday?`<span class="holiday-chip">${escapeHtml(holiday.name)}</span>`:""}<div class="leave-lanes">${chips}</div></div>`;
+          previousOverlapKey = overlapKey;
         }
       }
       els.calendarGrid.innerHTML = html;
