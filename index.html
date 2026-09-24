@@ -302,6 +302,39 @@
       .toast { right: 10px; bottom: 10px; max-width: calc(100% - 20px); }
       table { min-width: 670px; }
     }
+
+    /* Team leave calendar */
+    .app-nav { margin-top: 16px; display: flex; gap: 8px; padding: 6px; width: fit-content; border-radius: 14px; background: rgba(255,255,255,.92); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(23,35,60,.05); }
+    .nav-button { border: 0; border-radius: 10px; padding: 10px 16px; background: transparent; color: var(--muted); font-weight: 800; }
+    .nav-button.active { color: white; background: var(--blue); box-shadow: 0 6px 16px rgba(49,91,214,.2); }
+    .calendar-page { display: none; margin-top: 24px; }
+    .calendar-page.active { display: block; }
+    .dashboard-view[hidden], .holiday-summary[hidden], .approval-panel[hidden] { display: none !important; }
+    .calendar-panel { padding: 24px; }
+    .calendar-toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; }
+    .calendar-title { font-size: 26px; margin: 0; }
+    .calendar-controls { display:flex; gap:8px; flex-wrap:wrap; }
+    .calendar-weekdays, .calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }
+    .calendar-weekdays { border:1px solid var(--line); border-bottom:0; border-radius:16px 16px 0 0; overflow:hidden; }
+    .calendar-weekday { padding:11px 8px; text-align:center; color:var(--muted); background:#f8faff; font-size:11px; font-weight:800; letter-spacing:.08em; }
+    .calendar-weekday.weekend { background:#f3f5f9; }
+    .calendar-grid { border-left:1px solid var(--line); border-top:1px solid var(--line); }
+    .calendar-day { min-height:132px; padding:9px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); background:white; overflow:hidden; }
+    .calendar-day.weekend { background:#f8f9fc; }
+    .calendar-day.outside { background:#fafbfc; color:#a8afbc; }
+    .calendar-day.overlap { background:#fff9ed; box-shadow: inset 0 0 0 2px #f2c66d; }
+    .calendar-date-row { display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:7px; }
+    .calendar-date { width:28px; height:28px; display:grid; place-items:center; border-radius:9px; font-size:12px; font-weight:800; }
+    .calendar-day.today .calendar-date { color:white; background:var(--blue); }
+    .overlap-badge { padding:3px 6px; border-radius:999px; color:#8a5a10; background:#fff0c7; font-size:9px; font-weight:850; white-space:nowrap; }
+    .leave-chip { display:block; margin:5px 0 0; padding:6px 7px; border-radius:8px; font-size:10px; font-weight:800; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .leave-chip.vacation { color:#85520a; background:var(--amber-soft); }
+    .leave-chip.sick { color:#236e50; background:var(--green-soft); }
+    .holiday-chip { display:block; margin:5px 0 0; padding:5px 7px; border-radius:8px; color:#5b45b7; background:var(--purple-soft); font-size:9px; font-weight:800; line-height:1.25; }
+    .calendar-legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:16px; color:var(--muted); font-size:12px; font-weight:700; }
+    .legend-dot { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+    @media (max-width: 800px) { .calendar-panel { overflow-x:auto; } .calendar-weekdays, .calendar-grid { min-width:850px; } .calendar-toolbar { align-items:flex-start; flex-direction:column; } }
+
   </style>
 </head>
 <body>
@@ -339,6 +372,12 @@
       </div>
     </header>
 
+
+    <nav id="appNav" class="app-nav" aria-label="Employee Hub pages" hidden>
+      <button id="dashboardNav" class="nav-button active" type="button">Dashboard</button>
+      <button id="calendarNav" class="nav-button" type="button">Leave Calendar</button>
+    </nav>
+
     <section class="holiday-summary" aria-label="Current and upcoming public holidays">
       <article class="holiday-summary-card current">
         <span class="holiday-summary-icon" aria-hidden="true">★</span>
@@ -368,7 +407,7 @@
       <div id="pendingApprovalList" class="approval-list"></div>
     </section>
 
-    <main>
+    <main id="dashboardView" class="dashboard-view">
       <section class="panel employee-panel">
         <div class="section-heading">
           <div><p class="eyebrow">Team</p><h2>Select an employee</h2></div>
@@ -431,6 +470,25 @@
         </aside>
       </section>
     </main>
+
+    <section id="calendarPage" class="calendar-page" aria-label="Team leave calendar">
+      <article class="panel calendar-panel">
+        <div class="calendar-toolbar">
+          <div><p class="eyebrow">Team planning</p><h2 id="calendarMonthTitle" class="calendar-title">Leave Calendar</h2><p class="muted-text">Approved team leave. Weekends are shown for planning but are not deducted from leave balances.</p></div>
+          <div class="calendar-controls">
+            <button id="calendarPrev" class="button button-secondary" type="button">← Previous</button>
+            <button id="calendarToday" class="button button-secondary" type="button">Today</button>
+            <button id="calendarNext" class="button button-secondary" type="button">Next →</button>
+          </div>
+        </div>
+        <div class="calendar-weekdays">
+          <div class="calendar-weekday">MON</div><div class="calendar-weekday">TUE</div><div class="calendar-weekday">WED</div><div class="calendar-weekday">THU</div><div class="calendar-weekday">FRI</div><div class="calendar-weekday weekend">SAT</div><div class="calendar-weekday weekend">SUN</div>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+        <div class="calendar-legend"><span><i class="legend-dot" style="background:#fff5df"></i>Vacation</span><span><i class="legend-dot" style="background:#e8f6f0"></i>Sick</span><span><i class="legend-dot" style="background:#fff0c7"></i>2+ employees off</span><span><i class="legend-dot" style="background:#f0ecff"></i>Public holiday</span></div>
+      </article>
+    </section>
+
   </div>
 
   <dialog id="employeeDialog" class="modal">
@@ -501,7 +559,7 @@
 
 
     const ADMIN_EMAILS = new Set(["varun.phull@plymovent.com"]);
-    const state = { employees: [], leaves: [], selectedEmployeeId: null, activeFilter: null, editingLeaveId: null, confirmHandler: null, mode: "offline", user: null };
+    const state = { employees: [], leaves: [], selectedEmployeeId: null, activeFilter: null, editingLeaveId: null, confirmHandler: null, mode: "offline", user: null, activeView: "dashboard", calendarDate: new Date() };
     const $ = (id) => document.getElementById(id);
     const els = {
       employeeButtons: $("employeeButtons"), employeeCount: $("employeeCount"), selectedEmployeeName: $("selectedEmployeeName"), selectedEmployeeRole: $("selectedEmployeeRole"),
@@ -513,7 +571,7 @@
       nextHolidayName: $("nextHolidayName"), nextHolidayDate: $("nextHolidayDate"), nextHolidayBadge: $("nextHolidayBadge"),
       employeeDialog: $("employeeDialog"), employeeForm: $("employeeForm"), employeeName: $("employeeName"), employeeInitials: $("employeeInitials"), employeeEmail: $("employeeEmail"), employeeVacation: $("employeeVacation"), employeeSick: $("employeeSick"), saveEmployeeButton: $("saveEmployeeButton"),
       leaveDialog: $("leaveDialog"), leaveForm: $("leaveForm"), leaveDialogTitle: $("leaveDialogTitle"), leaveEmployeeLabel: $("leaveEmployeeLabel"), leaveType: $("leaveType"), leaveStartDate: $("leaveStartDate"), leaveEndDate: $("leaveEndDate"), leaveDuration: $("leaveDuration"), leaveNotes: $("leaveNotes"), saveLeaveButton: $("saveLeaveButton"),
-      confirmDialog: $("confirmDialog"), confirmTitle: $("confirmTitle"), confirmMessage: $("confirmMessage"), confirmActionButton: $("confirmActionButton"), toast: $("toast"), modeBadge: $("modeBadge"), modeText: $("modeText"), authGate: $("authGate"), loginForm: $("loginForm"), loginEmail: $("loginEmail"), loginPassword: $("loginPassword"), togglePassword: $("togglePassword"), forgotPassword: $("forgotPassword"), loginError: $("loginError"), loginButton: $("loginButton"), authMessage: $("authMessage"), signedInUser: $("signedInUser"), signOutButton: $("signOutButton")
+      confirmDialog: $("confirmDialog"), confirmTitle: $("confirmTitle"), confirmMessage: $("confirmMessage"), confirmActionButton: $("confirmActionButton"), toast: $("toast"), modeBadge: $("modeBadge"), modeText: $("modeText"), authGate: $("authGate"), loginForm: $("loginForm"), loginEmail: $("loginEmail"), loginPassword: $("loginPassword"), togglePassword: $("togglePassword"), forgotPassword: $("forgotPassword"), loginError: $("loginError"), loginButton: $("loginButton"), authMessage: $("authMessage"), signedInUser: $("signedInUser"), signOutButton: $("signOutButton"), appNav: $("appNav"), dashboardNav: $("dashboardNav"), calendarNav: $("calendarNav"), dashboardView: $("dashboardView"), calendarPage: $("calendarPage"), calendarGrid: $("calendarGrid"), calendarMonthTitle: $("calendarMonthTitle"), calendarPrev: $("calendarPrev"), calendarToday: $("calendarToday"), calendarNext: $("calendarNext")
     };
 
     const configuredForFirebase = Object.values(firebaseConfig).every(value => value && value !== "REPLACE_ME");
@@ -651,7 +709,55 @@
       record.reviewedAt = Date.now();
     }
 
-    function renderAll() { renderEmployees(); renderSelectedEmployee(); renderKpis(); renderPendingApprovals(); renderHistory(); renderHolidays(); }
+    function renderAll() { renderEmployees(); renderSelectedEmployee(); renderKpis(); renderPendingApprovals(); renderHistory(); renderHolidays(); renderCalendar(); renderView(); }
+
+    function setView(view) {
+      state.activeView = (view === "calendar" && isAdmin()) ? "calendar" : "dashboard";
+      renderView();
+      if (state.activeView === "calendar") renderCalendar();
+    }
+
+    function renderView() {
+      const calendarAllowed = isAdmin();
+      if (!calendarAllowed && state.activeView === "calendar") state.activeView = "dashboard";
+      if (els.appNav) els.appNav.hidden = !state.user;
+      if (els.calendarNav) els.calendarNav.hidden = !calendarAllowed;
+      const showCalendar = calendarAllowed && state.activeView === "calendar";
+      if (els.dashboardView) els.dashboardView.hidden = showCalendar;
+      const holidaySummary = document.querySelector(".holiday-summary");
+      if (holidaySummary) holidaySummary.hidden = showCalendar;
+      if (els.pendingApprovalsPanel && isAdmin()) els.pendingApprovalsPanel.hidden = showCalendar;
+      if (els.calendarPage) els.calendarPage.classList.toggle("active", showCalendar);
+      els.dashboardNav?.classList.toggle("active", !showCalendar);
+      els.calendarNav?.classList.toggle("active", showCalendar);
+    }
+
+    function isoLocal(date) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`; }
+    function renderCalendar() {
+      if (!els.calendarGrid || !isAdmin()) return;
+      const viewDate = state.calendarDate instanceof Date ? state.calendarDate : new Date();
+      const year = viewDate.getFullYear(), month = viewDate.getMonth();
+      els.calendarMonthTitle.textContent = new Intl.DateTimeFormat("en-CA", { month:"long", year:"numeric" }).format(new Date(year, month, 1));
+      const first = new Date(year, month, 1);
+      const mondayOffset = (first.getDay() + 6) % 7;
+      const gridStart = new Date(year, month, 1 - mondayOffset);
+      const todayIso = isoLocal(new Date());
+      const approved = state.leaves.filter(l => displayStatus(l.status) === "Approved");
+      let html = "";
+      for (let i=0; i<42; i++) {
+        const d = new Date(gridStart); d.setDate(gridStart.getDate()+i);
+        const iso = isoLocal(d);
+        const inMonth = d.getMonth() === month;
+        const weekend = d.getDay() === 0 || d.getDay() === 6;
+        const leaves = approved.filter(l => l.startDate <= iso && (l.endDate || l.startDate) >= iso);
+        const employeeIds = new Set(leaves.map(l => l.employeeId));
+        const overlap = employeeIds.size >= 2;
+        const holiday = PUBLIC_HOLIDAYS.find(h => iso >= h.date && iso <= (h.endDate || h.date));
+        const chips = leaves.map(l => { const e=state.employees.find(x=>x.id===l.employeeId); return `<span class="leave-chip ${String(l.type||"").toLowerCase()}" title="${escapeHtml((e?.name||"Employee")+" · "+(l.type||"Leave"))}">${escapeHtml(e?.name||"Employee")}</span>`; }).join("");
+        html += `<div class="calendar-day${weekend?" weekend":""}${!inMonth?" outside":""}${overlap?" overlap":""}${iso===todayIso?" today":""}"><div class="calendar-date-row"><span class="calendar-date">${d.getDate()}</span>${overlap?`<span class="overlap-badge">${employeeIds.size} off</span>`:""}</div>${holiday?`<span class="holiday-chip">${escapeHtml(holiday.name)}</span>`:""}${chips}</div>`;
+      }
+      els.calendarGrid.innerHTML = html;
+    }
     function renderEmployees() {
       els.employeeButtons.innerHTML = "";
       state.employees.forEach(employee => {
@@ -871,6 +977,12 @@
     els.employeeDialog.addEventListener("close", () => { els.employeeInitials.dataset.edited = "false"; resetButton(els.saveEmployeeButton, "Save Employee"); });
     els.leaveDialog.addEventListener("close", () => { state.editingLeaveId = null; resetButton(els.saveLeaveButton, "Save Leave"); });
 
+    els.dashboardNav?.addEventListener("click", () => setView("dashboard"));
+    els.calendarNav?.addEventListener("click", () => setView("calendar"));
+    els.calendarPrev?.addEventListener("click", () => { state.calendarDate = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth()-1, 1); renderCalendar(); });
+    els.calendarNext?.addEventListener("click", () => { state.calendarDate = new Date(state.calendarDate.getFullYear(), state.calendarDate.getMonth()+1, 1); renderCalendar(); });
+    els.calendarToday?.addEventListener("click", () => { state.calendarDate = new Date(); renderCalendar(); });
+
     async function setAuthenticatedState(user) {
       state.user = user;
       state.mode = "firebase";
@@ -884,7 +996,7 @@
     }
 
     function setSignedOutState(message = "Use your authorized Employee Hub email and password.") {
-      state.user = null; state.mode = "offline"; state.employees = []; state.leaves = []; state.selectedEmployeeId = null;
+      state.user = null; state.mode = "offline"; state.employees = []; state.leaves = []; state.selectedEmployeeId = null; state.activeView = "dashboard";
       els.modeBadge.classList.remove("firebase"); els.modeText.textContent = "Sign in required";
       els.openAddEmployee.disabled = true; els.openAddLeave.disabled = true; els.deleteEmployee.disabled = true;
       els.signOutButton.hidden = true;
