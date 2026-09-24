@@ -331,7 +331,7 @@
     .leave-chip.segment-start { margin-left:0; padding-left:7px; border-radius:8px 0 0 8px; }
     .leave-chip.segment-end { margin-right:0; padding-right:7px; border-radius:0 8px 8px 0; }
     .leave-chip.segment-start.segment-end { margin-left:0; margin-right:0; padding-left:7px; padding-right:7px; border-radius:8px; }
-    .leave-chip { color:var(--leave-text,#17325f); background:linear-gradient(90deg,var(--leave-from,#eaf0ff),var(--leave-to,#dce7ff)); border-top:1px solid var(--leave-border,#c7d5f5); border-bottom:1px solid var(--leave-border,#c7d5f5); box-shadow:0 3px 8px rgba(23,35,60,.08); }
+    .leave-chip { color:var(--leave-text,#17325f); background-image:linear-gradient(90deg,var(--leave-from,#eaf0ff),var(--leave-to,#dce7ff)); background-size:var(--gradient-size,100%) 100%; background-position:var(--gradient-position,0%) 0; background-repeat:no-repeat; border-top:1px solid var(--leave-border,#c7d5f5); border-bottom:1px solid var(--leave-border,#c7d5f5); box-shadow:0 3px 8px rgba(23,35,60,.08); }
     .leave-chip.segment-start { border-left:1px solid var(--leave-border,#c7d5f5); }
     .leave-chip.segment-end { border-right:1px solid var(--leave-border,#c7d5f5); }
     .employee-color-legend { display:inline-flex; align-items:center; gap:6px; }
@@ -740,13 +740,13 @@
 
     function isoLocal(date) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`; }
     const EMPLOYEE_CALENDAR_PALETTE = [
-      { from:"#dfe8ff", to:"#bfcfff", border:"#a9bdf2", text:"#183f9b" },
-      { from:"#dff5ed", to:"#bfe8d8", border:"#a8d7c6", text:"#17644d" },
-      { from:"#fff0d7", to:"#ffdca5", border:"#edc986", text:"#80500d" },
-      { from:"#e9e3ff", to:"#d4c8ff", border:"#c2b4ef", text:"#55409a" },
-      { from:"#dff2f7", to:"#bfe1eb", border:"#a9d1dc", text:"#1f6172" },
-      { from:"#fde5e8", to:"#f7c8cf", border:"#eab1ba", text:"#8c3542" },
-      { from:"#e8edf3", to:"#cfd9e5", border:"#bdc9d8", text:"#40526b" }
+      { from:"#dbe7ff", to:"#9fbbf3", border:"#8da9df", text:"#173f8f" },
+      { from:"#d9f1ea", to:"#9fd4c3", border:"#89c2b0", text:"#145b49" },
+      { from:"#fff0cf", to:"#e9c36f", border:"#d8b45e", text:"#72500d" },
+      { from:"#dceff7", to:"#9bc8da", border:"#86b6c9", text:"#17566d" },
+      { from:"#e3eaf2", to:"#aebdce", border:"#9cabbc", text:"#344b63" },
+      { from:"#dcebe5", to:"#9fc4b5", border:"#8bb2a3", text:"#28594a" },
+      { from:"#dbe4ee", to:"#8fa8c2", border:"#7d97b1", text:"#28445f" }
     ];
     function employeeCalendarColor(employeeId) {
       const ordered = state.employees.map(e => e.id);
@@ -815,7 +815,17 @@
             const label = segmentStart ? escapeHtml(e?.name || "Employee") : "&nbsp;";
             const lane = (laneById.get(l.id) ?? 0) + 1;
             const color = employeeCalendarColor(l.employeeId);
-            return `<span class="leave-chip${segmentStart?" segment-start":""}${segmentEnd?" segment-end":""}" style="grid-row:${lane};--leave-from:${color.from};--leave-to:${color.to};--leave-border:${color.border};--leave-text:${color.text}" title="${escapeHtml((e?.name||"Employee")+" · "+(l.type||"Leave"))}">${label}</span>`;
+            // Treat the visible part of this leave in the current calendar week as one
+            // continuous gradient. Each daily chip shows its slice of the same gradient.
+            const visibleStartIso = start < weekStartIso ? weekStartIso : start;
+            const visibleEndIso = end > weekEndIso ? weekEndIso : end;
+            const visibleStart = new Date(`${visibleStartIso}T00:00:00`);
+            const visibleEnd = new Date(`${visibleEndIso}T00:00:00`);
+            const visibleDays = Math.round((visibleEnd - visibleStart) / 86400000) + 1;
+            const dayIndex = Math.round((d - visibleStart) / 86400000);
+            const gradientSize = Math.max(1, visibleDays) * 100;
+            const gradientPosition = visibleDays > 1 ? (dayIndex / (visibleDays - 1)) * 100 : 0;
+            return `<span class="leave-chip${segmentStart?" segment-start":""}${segmentEnd?" segment-end":""}" style="grid-row:${lane};--leave-from:${color.from};--leave-to:${color.to};--leave-border:${color.border};--leave-text:${color.text};--gradient-size:${gradientSize}%;--gradient-position:${gradientPosition}%" title="${escapeHtml((e?.name||"Employee")+" · "+(l.type||"Leave"))}">${label}</span>`;
           }).join("");
           html += `<div class="calendar-day${weekend?" weekend":""}${!inMonth?" outside":""}${iso===todayIso?" today":""}"><div class="calendar-date-row"><span class="calendar-date">${d.getDate()}</span>${overlap?`<span class="overlap-badge">Overlap · ${employeeIds.size} off</span>`:""}</div>${holiday?`<span class="holiday-chip">${escapeHtml(holiday.name)}</span>`:""}<div class="leave-lanes">${chips}</div></div>`;
         }
