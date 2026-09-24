@@ -342,10 +342,10 @@
     .leave-chip.segment-end { border-right:1px solid var(--leave-border,#c7d5f5); }
     .employee-color-legend { display:inline-flex; align-items:center; gap:6px; }
     .employee-color-swatch { width:18px; height:8px; border-radius:999px; background:linear-gradient(90deg,var(--legend-from),var(--legend-to)); border:1px solid var(--legend-border); box-shadow:0 2px 5px rgba(23,35,60,.07); }
-    .holiday-chip { display:flex; align-items:center; gap:6px; width:fit-content; max-width:100%; margin:5px 0 8px; padding:6px 9px; border:1px solid rgba(39,74,112,.24); border-radius:9px; color:#1f456c; background:linear-gradient(135deg,rgba(255,255,255,.90),rgba(218,232,245,.76)); box-shadow:0 4px 12px rgba(31,49,76,.09), inset 0 1px 0 rgba(255,255,255,.88); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); font-size:9px; font-weight:850; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .holiday-chip::before { content:"★"; flex:0 0 auto; display:grid; place-items:center; width:17px; height:17px; border-radius:6px; color:#fff; background:linear-gradient(135deg,#315f8d,#1f456c); box-shadow:0 2px 6px rgba(31,69,108,.18); font-size:9px; }
-    .holiday-chip-label { flex:0 0 auto; color:#4d647c; font-size:8px; font-weight:900; letter-spacing:.06em; text-transform:uppercase; }
-    .holiday-chip-name { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+    .holiday-chip { display:grid; grid-template-columns:17px minmax(0,1fr); grid-template-areas:"icon label" "icon name"; align-items:center; column-gap:7px; row-gap:1px; width:100%; max-width:100%; margin:5px 0 8px; padding:6px 8px; border:1px solid rgba(194,101,20,.34); border-radius:9px; color:#7a3d0b; background:linear-gradient(135deg,rgba(255,250,242,.96),rgba(255,218,170,.82)); box-shadow:0 4px 12px rgba(139,78,18,.11), inset 0 1px 0 rgba(255,255,255,.9); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); font-size:9px; font-weight:850; line-height:1.2; overflow:hidden; box-sizing:border-box; }
+    .holiday-chip::before { content:"★"; grid-area:icon; align-self:center; display:grid; place-items:center; width:17px; height:17px; border-radius:6px; color:#fff; background:linear-gradient(135deg,#e28a24,#b95e0d); box-shadow:0 2px 6px rgba(153,78,13,.22); font-size:9px; }
+    .holiday-chip-label { grid-area:label; min-width:0; color:#a55512; font-size:7px; font-weight:900; letter-spacing:.055em; text-transform:uppercase; white-space:nowrap; }
+    .holiday-chip-name { grid-area:name; min-width:0; color:#713807; font-size:9px; font-weight:900; white-space:normal; overflow-wrap:anywhere; }
     .calendar-legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:16px; color:var(--muted); font-size:12px; font-weight:700; }
     .legend-dot { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
     @media (max-width: 800px) { .calendar-panel { overflow-x:auto; } .calendar-weekdays, .calendar-grid { min-width:850px; } .calendar-toolbar { align-items:flex-start; flex-direction:column; } }
@@ -500,7 +500,7 @@
           <div class="calendar-weekday">MON</div><div class="calendar-weekday">TUE</div><div class="calendar-weekday">WED</div><div class="calendar-weekday">THU</div><div class="calendar-weekday">FRI</div><div class="calendar-weekday weekend">SAT</div><div class="calendar-weekday weekend">SUN</div>
         </div>
         <div id="calendarGrid" class="calendar-grid"></div>
-        <div id="calendarLegend" class="calendar-legend"><span><i class="legend-dot" style="background:#fff7df"></i>Overlap = 2+ employees off</span><span><i class="legend-dot" style="background:#dbe8f4;border:1px solid #8aa6bf"></i>Public holiday</span></div>
+        <div id="calendarLegend" class="calendar-legend"><span><i class="legend-dot" style="background:#fff7df"></i>Overlap = 2+ employees off</span><span><i class="legend-dot" style="background:#ffe0b5;border:1px solid #d78a35"></i>Public holiday</span></div>
       </article>
     </section>
 
@@ -769,7 +769,7 @@
       els.calendarMonthTitle.textContent = new Intl.DateTimeFormat("en-CA", { month:"long", year:"numeric" }).format(new Date(year, month, 1));
       if (els.calendarLegend) {
         const people = state.employees.map(e => { const c = employeeCalendarColor(e.id); return `<span class="employee-color-legend"><i class="employee-color-swatch" style="--legend-from:${c.from};--legend-to:${c.to};--legend-border:${c.border}"></i>${escapeHtml(e.name)}</span>`; }).join("");
-        els.calendarLegend.innerHTML = people + `<span><i class="legend-dot" style="background:#dfe8f2;border:1px solid #9aabc0"></i>Overlap badge = 2+ employees off</span><span><i class="legend-dot" style="background:#dbe8f4;border:1px solid #8aa6bf"></i>Public holiday</span>`;
+        els.calendarLegend.innerHTML = people + `<span><i class="legend-dot" style="background:#dfe8f2;border:1px solid #9aabc0"></i>Overlap badge = 2+ employees off</span><span><i class="legend-dot" style="background:#ffe0b5;border:1px solid #d78a35"></i>Public holiday</span>`;
       }
       const first = new Date(year, month, 1);
       const mondayOffset = (first.getDay() + 6) % 7;
