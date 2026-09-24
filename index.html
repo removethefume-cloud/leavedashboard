@@ -331,8 +331,11 @@
     .leave-chip.segment-start { margin-left:0; padding-left:7px; border-radius:8px 0 0 8px; }
     .leave-chip.segment-end { margin-right:0; padding-right:7px; border-radius:0 8px 8px 0; }
     .leave-chip.segment-start.segment-end { margin-left:0; margin-right:0; padding-left:7px; padding-right:7px; border-radius:8px; }
-    .leave-chip.vacation { color:#85520a; background:var(--amber-soft); }
-    .leave-chip.sick { color:#236e50; background:var(--green-soft); }
+    .leave-chip { color:var(--leave-text,#17325f); background:linear-gradient(90deg,var(--leave-from,#eaf0ff),var(--leave-to,#dce7ff)); border-top:1px solid var(--leave-border,#c7d5f5); border-bottom:1px solid var(--leave-border,#c7d5f5); box-shadow:0 3px 8px rgba(23,35,60,.08); }
+    .leave-chip.segment-start { border-left:1px solid var(--leave-border,#c7d5f5); }
+    .leave-chip.segment-end { border-right:1px solid var(--leave-border,#c7d5f5); }
+    .employee-color-legend { display:inline-flex; align-items:center; gap:6px; }
+    .employee-color-swatch { width:18px; height:8px; border-radius:999px; background:linear-gradient(90deg,var(--legend-from),var(--legend-to)); border:1px solid var(--legend-border); box-shadow:0 2px 5px rgba(23,35,60,.07); }
     .holiday-chip { display:block; margin:5px 0 0; padding:5px 7px; border-radius:8px; color:#5b45b7; background:var(--purple-soft); font-size:9px; font-weight:800; line-height:1.25; }
     .calendar-legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:16px; color:var(--muted); font-size:12px; font-weight:700; }
     .legend-dot { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
@@ -488,7 +491,7 @@
           <div class="calendar-weekday">MON</div><div class="calendar-weekday">TUE</div><div class="calendar-weekday">WED</div><div class="calendar-weekday">THU</div><div class="calendar-weekday">FRI</div><div class="calendar-weekday weekend">SAT</div><div class="calendar-weekday weekend">SUN</div>
         </div>
         <div id="calendarGrid" class="calendar-grid"></div>
-        <div class="calendar-legend"><span><i class="legend-dot" style="background:#fff5df"></i>Vacation</span><span><i class="legend-dot" style="background:#e8f6f0"></i>Sick</span><span><i class="legend-dot" style="background:#fff7df"></i>Overlap = 2+ employees off</span><span><i class="legend-dot" style="background:#f0ecff"></i>Public holiday</span></div>
+        <div id="calendarLegend" class="calendar-legend"><span><i class="legend-dot" style="background:#fff7df"></i>Overlap = 2+ employees off</span><span><i class="legend-dot" style="background:#f0ecff"></i>Public holiday</span></div>
       </article>
     </section>
 
@@ -574,7 +577,7 @@
       nextHolidayName: $("nextHolidayName"), nextHolidayDate: $("nextHolidayDate"), nextHolidayBadge: $("nextHolidayBadge"),
       employeeDialog: $("employeeDialog"), employeeForm: $("employeeForm"), employeeName: $("employeeName"), employeeInitials: $("employeeInitials"), employeeEmail: $("employeeEmail"), employeeVacation: $("employeeVacation"), employeeSick: $("employeeSick"), saveEmployeeButton: $("saveEmployeeButton"),
       leaveDialog: $("leaveDialog"), leaveForm: $("leaveForm"), leaveDialogTitle: $("leaveDialogTitle"), leaveEmployeeLabel: $("leaveEmployeeLabel"), leaveType: $("leaveType"), leaveStartDate: $("leaveStartDate"), leaveEndDate: $("leaveEndDate"), leaveDuration: $("leaveDuration"), leaveNotes: $("leaveNotes"), saveLeaveButton: $("saveLeaveButton"),
-      confirmDialog: $("confirmDialog"), confirmTitle: $("confirmTitle"), confirmMessage: $("confirmMessage"), confirmActionButton: $("confirmActionButton"), toast: $("toast"), modeBadge: $("modeBadge"), modeText: $("modeText"), authGate: $("authGate"), loginForm: $("loginForm"), loginEmail: $("loginEmail"), loginPassword: $("loginPassword"), togglePassword: $("togglePassword"), forgotPassword: $("forgotPassword"), loginError: $("loginError"), loginButton: $("loginButton"), authMessage: $("authMessage"), signedInUser: $("signedInUser"), signOutButton: $("signOutButton"), appNav: $("appNav"), dashboardNav: $("dashboardNav"), calendarNav: $("calendarNav"), dashboardView: $("dashboardView"), calendarPage: $("calendarPage"), calendarGrid: $("calendarGrid"), calendarMonthTitle: $("calendarMonthTitle"), calendarPrev: $("calendarPrev"), calendarToday: $("calendarToday"), calendarNext: $("calendarNext")
+      confirmDialog: $("confirmDialog"), confirmTitle: $("confirmTitle"), confirmMessage: $("confirmMessage"), confirmActionButton: $("confirmActionButton"), toast: $("toast"), modeBadge: $("modeBadge"), modeText: $("modeText"), authGate: $("authGate"), loginForm: $("loginForm"), loginEmail: $("loginEmail"), loginPassword: $("loginPassword"), togglePassword: $("togglePassword"), forgotPassword: $("forgotPassword"), loginError: $("loginError"), loginButton: $("loginButton"), authMessage: $("authMessage"), signedInUser: $("signedInUser"), signOutButton: $("signOutButton"), appNav: $("appNav"), dashboardNav: $("dashboardNav"), calendarNav: $("calendarNav"), dashboardView: $("dashboardView"), calendarPage: $("calendarPage"), calendarGrid: $("calendarGrid"), calendarMonthTitle: $("calendarMonthTitle"), calendarPrev: $("calendarPrev"), calendarToday: $("calendarToday"), calendarNext: $("calendarNext"), calendarLegend: $("calendarLegend")
     };
 
     const configuredForFirebase = Object.values(firebaseConfig).every(value => value && value !== "REPLACE_ME");
@@ -736,11 +739,29 @@
     }
 
     function isoLocal(date) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`; }
+    const EMPLOYEE_CALENDAR_PALETTE = [
+      { from:"#dfe8ff", to:"#bfcfff", border:"#a9bdf2", text:"#183f9b" },
+      { from:"#dff5ed", to:"#bfe8d8", border:"#a8d7c6", text:"#17644d" },
+      { from:"#fff0d7", to:"#ffdca5", border:"#edc986", text:"#80500d" },
+      { from:"#e9e3ff", to:"#d4c8ff", border:"#c2b4ef", text:"#55409a" },
+      { from:"#dff2f7", to:"#bfe1eb", border:"#a9d1dc", text:"#1f6172" },
+      { from:"#fde5e8", to:"#f7c8cf", border:"#eab1ba", text:"#8c3542" },
+      { from:"#e8edf3", to:"#cfd9e5", border:"#bdc9d8", text:"#40526b" }
+    ];
+    function employeeCalendarColor(employeeId) {
+      const ordered = state.employees.map(e => e.id);
+      const index = Math.max(0, ordered.indexOf(employeeId));
+      return EMPLOYEE_CALENDAR_PALETTE[index % EMPLOYEE_CALENDAR_PALETTE.length];
+    }
     function renderCalendar() {
       if (!els.calendarGrid || !isAdmin()) return;
       const viewDate = state.calendarDate instanceof Date ? state.calendarDate : new Date();
       const year = viewDate.getFullYear(), month = viewDate.getMonth();
       els.calendarMonthTitle.textContent = new Intl.DateTimeFormat("en-CA", { month:"long", year:"numeric" }).format(new Date(year, month, 1));
+      if (els.calendarLegend) {
+        const people = state.employees.map(e => { const c = employeeCalendarColor(e.id); return `<span class="employee-color-legend"><i class="employee-color-swatch" style="--legend-from:${c.from};--legend-to:${c.to};--legend-border:${c.border}"></i>${escapeHtml(e.name)}</span>`; }).join("");
+        els.calendarLegend.innerHTML = people + `<span><i class="legend-dot" style="background:#fff7df"></i>Overlap = 2+ employees off</span><span><i class="legend-dot" style="background:#f0ecff"></i>Public holiday</span>`;
+      }
       const first = new Date(year, month, 1);
       const mondayOffset = (first.getDay() + 6) % 7;
       const gridStart = new Date(year, month, 1 - mondayOffset);
@@ -793,7 +814,8 @@
             const segmentEnd = !continuesToNext;
             const label = segmentStart ? escapeHtml(e?.name || "Employee") : "&nbsp;";
             const lane = (laneById.get(l.id) ?? 0) + 1;
-            return `<span class="leave-chip ${String(l.type||"").toLowerCase()}${segmentStart?" segment-start":""}${segmentEnd?" segment-end":""}" style="grid-row:${lane}" title="${escapeHtml((e?.name||"Employee")+" · "+(l.type||"Leave"))}">${label}</span>`;
+            const color = employeeCalendarColor(l.employeeId);
+            return `<span class="leave-chip${segmentStart?" segment-start":""}${segmentEnd?" segment-end":""}" style="grid-row:${lane};--leave-from:${color.from};--leave-to:${color.to};--leave-border:${color.border};--leave-text:${color.text}" title="${escapeHtml((e?.name||"Employee")+" · "+(l.type||"Leave"))}">${label}</span>`;
           }).join("");
           html += `<div class="calendar-day${weekend?" weekend":""}${!inMonth?" outside":""}${iso===todayIso?" today":""}"><div class="calendar-date-row"><span class="calendar-date">${d.getDate()}</span>${overlap?`<span class="overlap-badge">Overlap · ${employeeIds.size} off</span>`:""}</div>${holiday?`<span class="holiday-chip">${escapeHtml(holiday.name)}</span>`:""}<div class="leave-lanes">${chips}</div></div>`;
         }
